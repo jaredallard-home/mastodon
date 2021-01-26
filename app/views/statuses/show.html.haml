@@ -17,6 +17,9 @@
   = render 'og_description', activity: @status
   = render 'og_image', activity: @status, account: @account
 
+.bg-profile
+  .bg-profile-img{ style: "background-image: url(#{@account.header_static_url})" }
+
 .grid
   .column-0
     .activity-stream.h-entry

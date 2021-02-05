@@ -26,30 +26,27 @@ RUN apt-get update && \
 # Install mastodon runtime deps
 RUN apt-get update && \
   apt-get -y --no-install-recommends install \
-  libssl1.1 libpq5 imagemagick ffmpeg libjemalloc2 \
-  libicu-dev libprotobuf17 libidn11 libyaml-0-2 \
-  file ca-certificates tzdata libreadline-dev gcc tini && \
+  curl gcc g++ make \
+  imagemagick ffmpeg libpq-dev libxml2-dev libxslt1-dev file git-core \
+  libprotobuf-dev protobuf-compiler pkg-config autoconf \
+  bison build-essential libssl-dev libyaml-dev libreadline-dev \
+  zlib1g-dev libncurses5-dev libffi-dev libgdbm-dev \
+  libidn11-dev libicu-dev libjemalloc-dev && \
   ln -s /opt/mastodon /mastodon && \
   gem install bundler && \
   rm -rf /var/cache && \
   rm -rf /var/lib/apt/lists/*
 
-COPY Gemfile* package.json yarn.lock /opt/mastodon/
-
-RUN cd /opt/mastodon && \
-  bundle config set deployment 'true' && \
-  bundle config set without 'development test' && \
-  bundle install -j"$(nproc)" && \
-  yarn install --frozen-lockfile
-
 # Copy over mastodon source, and dependencies from building, and set permissions
 COPY --chown=mastodon:mastodon . /opt/mastodon
 
+RUN --mount=type=cache,target=/opt/mastodon/node_modules --mount=type=cache,target=/opt/mastodon/vendor \
+  chown -R mastodon:mastodon /opt/mastodon && \
+  bundle install && \
+  NODE_ENV=development yarn install --frozen-lockfile && \
+  OTP_SECRET=precompile_placeholder SECRET_KEY_BASE=precompile_placeholder rails assets:precompile && \
+  yarn cache clean && \
+  chown -R mastodon:mastodon /opt/mastodon
+
 # Set the run user
 USER mastodon
-
-# Precompile assets
-RUN --mount=type=cache,target=/opt/mastodon/node_modules cd ~ && \
-  OTP_SECRET=precompile_placeholder SECRET_KEY_BASE=precompile_placeholder rails assets:precompile && \
-  yarn cache clean
-

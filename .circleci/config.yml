@@ -222,15 +222,13 @@ jobs:
       - run:
           name: Configure Docker Authn
           command: |-
-            echo "setting up docker authn"
-            echo "${GCLOUD_SERVICE_ACCOUNT}" | docker login \
+            base64 -d <<< "${GCLOUD_SERVICE_ACCOUNT}" | docker login \
               -u _json_key \
               --password-stdin \
               https://gcr.io
       - run:
           name: Installing buildx
           command: |-
-            echo "ensuring docker buildx is installed"
             curl --output docker-buildx \
               --silent --show-error --location --fail --retry 3 \
               "https://github.com/docker/buildx/releases/download/v0.5.1/buildx-v0.5.1.linux-amd64"
@@ -284,6 +282,7 @@ workflows:
           requires:
             - install-ruby2.7
       - push:
+          context: docker
           requires:
             - build
             - test-webui

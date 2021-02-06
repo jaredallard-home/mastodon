@@ -55,64 +55,64 @@ aliases:
       - *persist_to_workspace
 
   - &install_system_dependencies
-      run:
-        name: Install system dependencies
-        command: |
-          sudo apt-get update
-          sudo apt-get install -y libicu-dev libidn11-dev libprotobuf-dev protobuf-compiler
+    run:
+      name: Install system dependencies
+      command: |
+        sudo apt-get update
+        sudo apt-get install -y libicu-dev libidn11-dev libprotobuf-dev protobuf-compiler
 
   - &install_ruby_dependencies
-      steps:
-        - *attach_workspace
-        - *install_system_dependencies
-        - run:
-            name: Set Ruby version
-            command: ruby -e 'puts RUBY_VERSION' | tee /tmp/.ruby-version
-        - *restore_ruby_dependencies
-        - run:
-            name: Set bundler settings
-            command: |
-              bundle config --local clean 'true'
-              bundle config --local deployment 'true'
-              bundle config --local with 'pam_authentication'
-              bundle config --local without 'development production'
-              bundle config --local frozen 'true'
-              bundle config --local path $BUNDLE_PATH
-        - run:
-            name: Install bundler dependencies
-            command: bundle check || (bundle install && bundle clean)
-        - save_cache:
-            key: v3-ruby-dependencies-{{ checksum "/tmp/.ruby-version" }}-{{ checksum "Gemfile.lock" }}
-            paths:
-              - ./.bundle/
-              - ./vendor/bundle/
-        - persist_to_workspace:
-            root: ~/projects/
-            paths:
-                - ./mastodon/.bundle/
-                - ./mastodon/vendor/bundle/
+    steps:
+      - *attach_workspace
+      - *install_system_dependencies
+      - run:
+          name: Set Ruby version
+          command: ruby -e 'puts RUBY_VERSION' | tee /tmp/.ruby-version
+      - *restore_ruby_dependencies
+      - run:
+          name: Set bundler settings
+          command: |
+            bundle config --local clean 'true'
+            bundle config --local deployment 'true'
+            bundle config --local with 'pam_authentication'
+            bundle config --local without 'development production'
+            bundle config --local frozen 'true'
+            bundle config --local path $BUNDLE_PATH
+      - run:
+          name: Install bundler dependencies
+          command: bundle check || (bundle install && bundle clean)
+      - save_cache:
+          key: v3-ruby-dependencies-{{ checksum "/tmp/.ruby-version" }}-{{ checksum "Gemfile.lock" }}
+          paths:
+            - ./.bundle/
+            - ./vendor/bundle/
+      - persist_to_workspace:
+          root: ~/projects/
+          paths:
+            - ./mastodon/.bundle/
+            - ./mastodon/vendor/bundle/
 
   - &test_steps
-      parallelism: 4
-      steps:
-        - *attach_workspace
-        - *install_system_dependencies
-        - run:
-            name: Install FFMPEG
-            command: sudo apt-get install -y ffmpeg
-        - run:
-            name: Load database schema
-            command: ./bin/rails db:create db:schema:load db:seed
-        - run:
-            name: Run rspec in parallel
-            command: |
-              bundle exec rspec --profile 10 \
-                                --format RspecJunitFormatter \
-                                --out test_results/rspec.xml \
-                                --format progress \
-                                $(circleci tests glob "spec/**/*_spec.rb" | circleci tests split --split-by=timings)
-        - store_test_results:
-            path: test_results
+    parallelism: 4
+    steps:
+      - *attach_workspace
+      - *install_system_dependencies
+      - run:
+          name: Install FFMPEG
+          command: sudo apt-get install -y ffmpeg
+      - run:
+          name: Load database schema
+          command: ./bin/rails db:create db:schema:load db:seed
+      - run:
+          name: Run rspec in parallel
+          command: |
+            bundle exec rspec --profile 10 \
+                              --format RspecJunitFormatter \
+                              --out test_results/rspec.xml \
+                              --format progress \
+                              $(circleci tests glob "spec/**/*_spec.rb" | circleci tests split --split-by=timings)
+      - store_test_results:
+          path: test_results
 jobs:
   install:
     <<: *defaults
@@ -140,8 +140,8 @@ jobs:
       - persist_to_workspace:
           root: ~/projects/
           paths:
-              - ./mastodon/public/assets
-              - ./mastodon/public/packs-test/
+            - ./mastodon/public/assets
+            - ./mastodon/public/packs-test/
 
   test-migrations:
     <<: *defaults
@@ -214,6 +214,16 @@ jobs:
       - run:
           name: Check that all required locale files exist
           command: bundle exec rake repo:check_locales_files
+  push:
+    docker:
+      - image: docker:20.10.2
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 19.03.13
+      - run:
+          command: docker buildx build --progress=plain --push -t us-docker.pkg.dev/triton-ops/jaredallard-home/mastodon .
+          name: Build and Push Docker Image
 
 workflows:
   version: 2
@@ -247,3 +257,8 @@ workflows:
       - check-i18n:
           requires:
             - install-ruby2.7
+      - push:
+          requires:
+            - build
+            - test-webui
+            - test-ruby2.7

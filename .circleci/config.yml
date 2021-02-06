@@ -250,6 +250,7 @@ jobs:
             docker buildx inspect --bootstrap
       - run:
           name: Build and Push Docker Image
+          no_output_timeout: 1h
           command: docker buildx build --progress=plain --platform "$BUILDX_PLATFORMS" --push -t us-docker.pkg.dev/triton-ops/jaredallard-home/mastodon .
 
 workflows:

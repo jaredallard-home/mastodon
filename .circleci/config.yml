@@ -222,6 +222,31 @@ jobs:
       - setup_remote_docker:
           version: 19.03.13
       - run:
+          command: |-
+            echo "setting up docker authn"
+            docker login \
+              -u _json_key \
+              --password-stdin \
+              https://gcr.io <<<"${GCLOUD_SERVICE_ACCOUNT}"
+
+            echo "ensuring docker buildx is installed"
+            curl --output docker-buildx \
+              --silent --show-error --location --fail --retry 3 \
+              "https://github.com/docker/buildx/releases/download/v0.5.1/buildx-v0.5.1.linux-amd64"
+            mkdir -p ~/.docker/cli-plugins
+            mv docker-buildx ~/.docker/cli-plugins/
+            chmod a+x ~/.docker/cli-plugins/docker-buildx
+            docker buildx version
+
+            echo "setting up QEMU"
+            docker run --rm --privileged multiarch/qemu-user-static:register
+
+            echo "setting up buildx"
+            #docker context create
+            docker buildx create --use
+            docker buildx inspect --bootstrap
+          name: Configure Docker
+      - run:
           command: docker buildx build --progress=plain --push -t us-docker.pkg.dev/triton-ops/jaredallard-home/mastodon .
           name: Build and Push Docker Image
 

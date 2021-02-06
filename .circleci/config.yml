@@ -218,7 +218,7 @@ jobs:
     machine:
       image: ubuntu-2004:202101-01
       docker_layer_caching: true
-    resource_class: xlarge
+    resource_class: large
     environment:
       BUILDX_PLATFORMS: linux/amd64,linux/arm64
     steps:

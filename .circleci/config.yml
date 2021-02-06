@@ -215,20 +215,21 @@ jobs:
           name: Check that all required locale files exist
           command: bundle exec rake repo:check_locales_files
   push:
-    docker:
-      - image: docker:20.10.2
+    machine:
+      image: ubuntu-2004:202101-01
     steps:
       - checkout
-      - setup_remote_docker:
-          version: 19.03.13
       - run:
+          name: Configure Docker Authn
           command: |-
             echo "setting up docker authn"
-            docker login \
+            echo "${GCLOUD_SERVICE_ACCOUNT}" | docker login \
               -u _json_key \
               --password-stdin \
-              https://gcr.io <<<"${GCLOUD_SERVICE_ACCOUNT}"
-
+              https://gcr.io
+      - run:
+          name: Installing buildx
+          command: |-
             echo "ensuring docker buildx is installed"
             curl --output docker-buildx \
               --silent --show-error --location --fail --retry 3 \
@@ -237,18 +238,18 @@ jobs:
             mv docker-buildx ~/.docker/cli-plugins/
             chmod a+x ~/.docker/cli-plugins/docker-buildx
             docker buildx version
-
-            echo "setting up QEMU"
-            docker run --rm --privileged multiarch/qemu-user-static:register
-
-            echo "setting up buildx"
-            #docker context create
-            docker buildx create --use
-            docker buildx inspect --bootstrap
-          name: Configure Docker
       - run:
-          command: docker buildx build --progress=plain --push -t us-docker.pkg.dev/triton-ops/jaredallard-home/mastodon .
+          name: Configuring Host QEMU
+          command: docker run --rm --privileged multiarch/qemu-user-static:register
+      - run:
+          name: Starting buildx builder
+          command: |-
+            docker context create builder
+            docker buildx create builder --use
+            docker buildx inspect --bootstrap
+      - run:
           name: Build and Push Docker Image
+          command: docker buildx build --progress=plain --platform linux/amd64,linux/arm64 --push -t us-docker.pkg.dev/triton-ops/jaredallard-home/mastodon .
 
 workflows:
   version: 2
@@ -287,3 +288,4 @@ workflows:
             - build
             - test-webui
             - test-ruby2.7
+            - test-ruby2.6

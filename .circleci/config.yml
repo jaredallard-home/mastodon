@@ -217,6 +217,8 @@ jobs:
   push:
     machine:
       image: ubuntu-2004:202101-01
+    environment:
+      BUILDX_PLATFORMS: linux/amd64,linux/arm64
     steps:
       - checkout
       - run:
@@ -235,10 +237,11 @@ jobs:
             mkdir -p ~/.docker/cli-plugins
             mv docker-buildx ~/.docker/cli-plugins/
             chmod a+x ~/.docker/cli-plugins/docker-buildx
+            docker buildx install
             docker buildx version
       - run:
           name: Configuring Host QEMU
-          command: docker run --rm --privileged multiarch/qemu-user-static:register
+          command: docker run --rm --privileged tonistiigi/binfmt:latest --install "$BUILDX_PLATFORMS"
       - run:
           name: Starting buildx builder
           command: |-
@@ -247,7 +250,7 @@ jobs:
             docker buildx inspect --bootstrap
       - run:
           name: Build and Push Docker Image
-          command: docker buildx build --progress=plain --platform linux/amd64,linux/arm64 --push -t us-docker.pkg.dev/triton-ops/jaredallard-home/mastodon .
+          command: docker buildx build --progress=plain --platform "$BUILDX_PLATFORMS" --push -t us-docker.pkg.dev/triton-ops/jaredallard-home/mastodon .
 
 workflows:
   version: 2

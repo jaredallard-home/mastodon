@@ -227,7 +227,7 @@ jobs:
             base64 -d <<< "${GCLOUD_SERVICE_ACCOUNT}" | docker login \
               -u _json_key \
               --password-stdin \
-              https://gcr.io
+              us-docker.pkg.dev
       - run:
           name: Installing buildx
           command: |-

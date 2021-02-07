@@ -230,7 +230,7 @@ jobs:
             - v1-docker-cache-
       - run:
           name: Start Docker
-          command: sudo systemctl start Docker
+          command: sudo systemctl start docker
       - run:
           name: Install yarn dependencies
           command: yarn install --frozen-lockfile

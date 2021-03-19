@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'singleton'
-require_relative './sanitize_config'
 
 class HTMLRenderer < Redcarpet::Render::HTML
   def block_code(code, language)
